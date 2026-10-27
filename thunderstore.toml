@@ -1,0 +1,40 @@
+[config]
+schemaVersion = "0.0.1"
+
+[general]
+repository = "https://thunderstore.io"
+
+[package]
+# Must match your Thunderstore team name exactly
+namespace = "LJIndustries"
+name = "OriginsStaffs"
+versionNumber = "0.1.0"
+description = "The four elemental staffs from Black Ops 2 Zombies' Origins, reloaded by hand with glowing crystals."
+websiteUrl = "https://github.com/3WiseStooges/OriginsStaffs"
+containsNsfwContent = false
+
+[package.dependencies]
+"devyndamonster-OtherLoader" = "1.3.7"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./CHANGELOG.md"
+target = "CHANGELOG.md"
+
+# MeatKit writes its asset bundles to Unity/AssetBundles/<PackageName>/<Version>/.
+# Copy that folder's bundles (and OriginsStaffs.dll once there are scripts) into package/
+# before running `tcli build`; see DEVELOPMENT.md.
+[[build.copy]]
+source = "./package"
+target = ""
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["h3vr"]
+
+[publish.categories]
+h3vr = ["weapons"]

@@ -1,0 +1,22 @@
+# Raw game rips: regenerate with tools/collect_assets.py, never commit
+extracted/
+
+# Ripped meshes/textures/materials are regenerated from your own BO2 install by
+# tools/export_unity.py + "Origins Staffs/Rebuild Ripped Prefabs". Keep their .meta files
+# so prefab references (GUIDs) survive a fresh clone.
+Unity/Assets/OriginsStaffs/Ripped/**
+!Unity/Assets/OriginsStaffs/Ripped/**/
+!Unity/Assets/OriginsStaffs/Ripped/**/*.meta
+
+# Copies of the repo-root docs made by PackageDocsSync
+Unity/Assets/OriginsStaffs/Package/*
+!Unity/Assets/OriginsStaffs/Package/*.meta
+
+# MeatKit/Unity build output
+Unity/AssetBundles/
+build/
+package/*
+!package/.gitkeep
+
+# Python bytecode from running tools/
+__pycache__/

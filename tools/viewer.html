@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Origins Staffs Viewer</title>
+<style>
+  :root { --bg:#14161a; --panel:#1f2329; --text:#e6e8eb; --muted:#9aa3ad; --accent:#e0a040; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text); font:14px system-ui, sans-serif; }
+  #ui { position:absolute; top:12px; left:12px; right:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  #ui button { background:var(--panel); color:var(--text); border:1px solid #333a43; border-radius:6px; padding:6px 10px; cursor:pointer; }
+  #ui button.on { border-color:var(--accent); color:var(--accent); }
+  #info { position:absolute; bottom:12px; left:12px; right:12px; color:var(--muted); font-size:12px; white-space:pre-wrap; }
+  canvas { display:block; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="ui"></div>
+<div id="info">Loading…</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+const M = '../extracted/models/';
+const ELEMENTS = [
+  { key:'fire',  label:'Fire (Kagutsuchi)',   tip:'fire',      crystal:'fire',  reload:'fire',  upgTip:'fire',  upgReload:'fire'  },
+  { key:'water', label:'Ice (Ull)',           tip:'water',     crystal:'water', reload:'water', upgTip:'water', upgReload:'water' },
+  { key:'bolt',  label:'Lightning (Kimat)',   tip:'lightning', crystal:'bolt',  reload:'bolt',  upgTip:'bolt',  upgReload:'bolt'  },
+  { key:'air',   label:'Wind (Boreas)',       tip:'air',       crystal:'air',   reload:'air',   upgTip:'air',   upgReload:'air'   },
+];
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x14161a);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(40, 80, 60); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 5000);
+const controls = new OrbitControls(camera, renderer.domElement);
+
+const loader = new GLTFLoader();
+const cache = new Map();
+async function load(name) {
+  if (!cache.has(name)) cache.set(name, loader.loadAsync(M + name + '_png.gltf').then(g => g.scene));
+  const s = await cache.get(name);
+  const c = SkeletonUtils.clone(s);
+  c.traverse(o => {
+    if (!o.isMesh) return;
+    o.material = o.material.clone();
+    o.material.metalness = 0; o.material.roughness = 0.65;
+    o.frustumCulled = false;
+    // CoD materials are custom shaders; emissive-only crystals export with no colour map.
+    const n = (o.material.name || '').toLowerCase();
+    if (n.includes('crystal') || n.includes('pwr_srce')) {
+      o.material.emissive = new THREE.Color(1, 1, 1);
+      o.material.emissiveMap = o.material.map;
+      o.material.emissiveIntensity = 1.2;
+    }
+    o.material.side = THREE.DoubleSide;
+  });
+  return c;
+}
+function attach(parent, tagName, child) {
+  const tag = parent.getObjectByName(tagName);
+  if (!tag) { console.warn('missing tag', tagName); parent.add(child); return; }
+  // OAT turns Z-up into Y-up on the root bone (the one under "<model>_skel"), and the attached
+  // model's vertices are already Y-up, so undo that turn once for the child.
+  let root = tag;
+  while (root.parent && !root.parent.name.endsWith('_skel')) root = root.parent;
+  const fix = new THREE.Group();
+  fix.quaternion.copy(root.quaternion).invert();
+  fix.add(child);
+  tag.add(fix);
+}
+
+async function buildStaff(el, upgraded) {
+  const staff = await load(upgraded ? 't6_wpn_zmb_staff_upg_world' : 't6_wpn_zmb_staff_world');
+  attach(staff, 'tag_tip', await load(upgraded ? `t6_wpn_zmb_staff_tip_upg_${el.upgTip}_world` : `t6_wpn_zmb_staff_tip_${el.tip}_world`));
+  attach(staff, 'tag_crystal', await load(`t6_wpn_zmb_staff_crystal_${el.crystal}_world`));
+  attach(staff, 'tag_reload', await load(upgraded ? `t6_wpn_zmb_staff_reload_upg_${el.upgReload}_world` : `t6_wpn_zmb_staff_reload_${el.reload}_world`));
+  return staff;
+}
+
+let current = new THREE.Group(); scene.add(current);
+function frame(obj) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  const r = size.length() / 2;
+  controls.target.copy(center);
+  camera.position.copy(center).add(new THREE.Vector3(0.0, r * 0.15, r * 2.6));
+  camera.near = r / 100; camera.far = r * 50; camera.updateProjectionMatrix();
+  controls.update();
+}
+
+const views = {
+  async lineup() {
+    const g = new THREE.Group();
+    let x = 0;
+    for (const upgraded of [false, true]) for (const el of ELEMENTS) {
+      const s = await buildStaff(el, upgraded);
+      const holder = new THREE.Group(); holder.add(s);
+      holder.position.x = x; x += 22; if (!upgraded && el.key === 'air') x += 14;
+      g.add(holder);
+    }
+    return [g, 'Top row order: Fire, Ice, Lightning, Wind (base), then the same four upgraded.\nTip, crystal and reload crystal are snapped to the staff model\'s own tag_tip / tag_crystal / tag_reload attachment points.'];
+  },
+  async fire() {
+    const g = new THREE.Group();
+    const base = await buildStaff(ELEMENTS[0], false);
+    const upg = await buildStaff(ELEMENTS[0], true); upg.position.x = 22;
+    g.add(base, upg);
+    return [g, 'Fire Staff close-up: base (left) and upgraded (right), as the Unity prefabs assemble them.'];
+  },
+  async crystals() {
+    const g = new THREE.Group(); let x = 0;
+    for (const el of ELEMENTS) {
+      for (const [i, name] of [`t6_wpn_zmb_staff_crystal_${el.crystal}_world`, `t6_wpn_zmb_staff_reload_${el.reload}_world`, `t6_wpn_zmb_staff_crystal_${el.crystal}_part`].entries()) {
+        const m = await load(name); m.position.set(x, i * -16, 0); g.add(m);
+      }
+      x += 18;
+    }
+    return [g, 'Columns: Fire, Ice, Lightning, Wind.\nRows: head crystal (world) · reload crystal assembly (sits at tag_reload) · craftable crystal part (the dig-site pickup).\nThe reload crystal row is the natural "magazine" for H3VR.'];
+  },
+  async viewmodel() {
+    const g = new THREE.Group();
+    const v = await load('t6_wpn_zmb_staff_view');
+    attach(v, 'tag_tip', await load('t6_wpn_zmb_staff_tip_fire_view'));
+    attach(v, 'tag_crystal', await load('t6_wpn_zmb_staff_crystal_fire_view'));
+    g.add(v);
+    return [g, 'First-person model (13k verts, higher detail than the world model) with the fire tip + crystal.\nHas extra tags: tag_upg_1..5 for the upgraded staff\'s orbiting crystals, tag_rotate, tag_trigger.'];
+  },
+  async holder() {
+    const g = new THREE.Group();
+    g.add(await load('p6_zm_tm_staff_holder'));
+    const s = await buildStaff(ELEMENTS[0], false); s.position.set(0, 0, 40); g.add(s);
+    return [g, 'Crazy Place staff pedestal (p6_zm_tm_staff_holder) — usable as a display stand / spawner prop.'];
+  },
+};
+
+const ui = document.getElementById('ui'), info = document.getElementById('info');
+for (const k of Object.keys(views)) {
+  const b = document.createElement('button'); b.textContent = k; b.onclick = () => show(k); b.id = 'b-' + k; ui.appendChild(b);
+}
+async function show(k) {
+  document.querySelectorAll('#ui button').forEach(b => b.classList.toggle('on', b.id === 'b-' + k));
+  info.textContent = 'Loading…';
+  scene.remove(current);
+  try {
+    const [g, text] = await views[k]();
+    current = g; scene.add(g); frame(g); info.textContent = text;
+  } catch (e) { info.textContent = 'Error: ' + e.message; console.error(e); }
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+renderer.setAnimationLoop(() => renderer.render(scene, camera));
+show(location.hash.slice(1) || 'lineup');
+</script>
+</body>
+</html>

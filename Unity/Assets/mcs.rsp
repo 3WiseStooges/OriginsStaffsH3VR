@@ -1,0 +1,4 @@
+-r:Assets/Managed/H3VRCode-CSharp-firstpass.dll
+-r:Assets/Managed/H3VRCode-CSharp.dll
+-r:Assets/Managed/BepInEx.dll
+-r:Assets/Managed/0Harmony.dll
