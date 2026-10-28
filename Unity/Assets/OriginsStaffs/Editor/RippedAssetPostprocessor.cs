@@ -1,4 +1,6 @@
+using System.IO;
 using UnityEditor;
+using UnityEngine;
 
 namespace OriginsStaffs.EditorTools
 {
@@ -14,7 +16,7 @@ namespace OriginsStaffs.EditorTools
         // Bump when the settings below change so Unity reimports existing ripped assets.
         public override uint GetVersion()
         {
-            return 2;
+            return 3;
         }
 
         private void OnPreprocessModel()
@@ -35,12 +37,31 @@ namespace OriginsStaffs.EditorTools
 
         private void OnPreprocessTexture()
         {
+            if (assetPath.StartsWith("Assets/OriginsStaffs/Art/"))
+            {
+                // Spawner folder thumbnails and similar UI art.
+                var art = (TextureImporter)assetImporter;
+                art.textureType = TextureImporterType.Sprite;
+                art.alphaIsTransparency = true;
+                art.mipmapEnabled = false;
+                return;
+            }
             if (!assetPath.StartsWith(RippedRoot)) return;
 
             var importer = (TextureImporter)assetImporter;
             if (assetPath.EndsWith("_nml.png") || assetPath.EndsWith("_n.png"))
             {
                 importer.textureType = TextureImporterType.NormalMap;
+            }
+            if (assetPath.StartsWith(RippedRoot + "FX/"))
+            {
+                // Effect flipbooks must not bleed between frames; BO2 HUD icons become spawner sprites.
+                importer.wrapMode = TextureWrapMode.Clamp;
+                if (Path.GetFileName(assetPath).StartsWith("zom_hud_"))
+                {
+                    importer.textureType = TextureImporterType.Sprite;
+                    importer.alphaIsTransparency = true;
+                }
             }
             importer.maxTextureSize = 2048;
         }

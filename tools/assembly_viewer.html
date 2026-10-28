@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff Assembly Check</title>
+<style>
+  :root { --bg:#14161a; --panel:#1f2329; --text:#e6e8eb; --muted:#9aa3ad; --accent:#e0a040; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text); font:14px system-ui, sans-serif; }
+  #ui { position:absolute; top:12px; left:12px; right:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  #ui button, #ui select { background:var(--panel); color:var(--text); border:1px solid #333a43; border-radius:6px; padding:6px 10px; }
+  #ui input[type=range] { flex:1; min-width:160px; }
+  #info { position:absolute; bottom:12px; left:12px; right:12px; color:var(--muted); font-size:12px; white-space:pre-wrap; }
+  canvas { display:block; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="ui">
+  <select id="variant"><option>Staff_Fire</option><option>Staff_Fire_Upgraded</option><option>Staff_Ice</option><option>Staff_Ice_Upgraded</option><option>Staff_Lightning</option><option>Staff_Lightning_Upgraded</option><option>Staff_Wind</option><option>Staff_Wind_Upgraded</option></select>
+  <button id="play">Play reload</button>
+  <input id="frame" type="range" min="0" max="75" step="0.1" value="0">
+  <span id="flabel">f0</span>
+  <label><input id="single" type="checkbox"> front faces only</label>
+</div>
+<div id="info">Loading…</div>
+<script type="module">
+// Renders Ripped/Assembly/<variant>.json exactly as StaffAssemblyBuilder.cs will build it,
+// to check axes, winding, skinning and the BO2 reload tracks before touching Unity.
+// The data is in Unity's left-handed space; three.js is right-handed, so X is mirrored here.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const ROOT = '../Unity/Assets/OriginsStaffs/Ripped/';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x14161a);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 2.0));
+const sun = new THREE.DirectionalLight(0xffffff, 2.0); sun.position.set(1, 2, 1); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.01, 50);
+const controls = new OrbitControls(camera, renderer.domElement);
+
+const f32 = s => new Float32Array(Uint8Array.from(atob(s), c => c.charCodeAt(0)).buffer);
+const i32 = s => new Int32Array(Uint8Array.from(atob(s), c => c.charCodeAt(0)).buffer);
+const mirrorPos = (p) => new THREE.Vector3(-p[0], p[1], p[2]);
+const mirrorRot = (q) => new THREE.Quaternion(q[0], -q[1], -q[2], q[3]);
+const texLoader = new THREE.TextureLoader();
+const texCache = {};
+function tex(name, srgb) {
+  if (!name) return null;
+  if (!texCache[name]) {
+    texCache[name] = texLoader.load(ROOT + 'Textures/' + name);
+    texCache[name].colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  }
+  return texCache[name];
+}
+
+let current = null, data = null, bones = [], bind = [];
+async function load(variant) {
+  if (current) scene.remove(current);
+  data = await (await fetch(ROOT + 'Assembly/' + variant + '.json')).json();
+  bones = data.bones.map(b => { const o = new THREE.Bone(); o.name = b.name; return o; });
+  bind = data.bones.map(b => ({ pos: mirrorPos(b.pos), rot: mirrorRot(b.rot) }));
+  data.bones.forEach((b, i) => {
+    bones[i].position.copy(bind[i].pos); bones[i].quaternion.copy(bind[i].rot);
+    if (b.scale) bones[i].scale.setScalar(b.scale);
+    if (b.parent >= 0) bones[b.parent].add(bones[i]);
+  });
+  const root = bones[0];
+  root.updateMatrixWorld(true);
+  const skeleton = new THREE.Skeleton(bones);
+  const side = document.getElementById('single').checked ? THREE.FrontSide : THREE.DoubleSide;
+  for (const m of data.meshes) {
+    const g = new THREE.BufferGeometry();
+    const v = f32(m.vertices), n = f32(m.normals);
+    for (let i = 0; i < v.length; i += 3) { v[i] = -v[i]; n[i] = -n[i]; }
+    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(n, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(f32(m.uv), 2));
+    const idx = [], mats = [];
+    m.submeshes.forEach((s, si) => {
+      const t = i32(s.triangles);
+      // Mirroring X flips handedness, and Unity's front faces are clockwise: reverse each triangle.
+      const start = idx.length;
+      for (let k = 0; k < t.length; k += 3) idx.push(t[k], t[k + 2], t[k + 1]);
+      g.addGroup(start, t.length, si);
+      const mat = s.material;
+      mats.push(new THREE.MeshStandardMaterial({
+        map: tex(mat.albedo, true), normalMap: tex(mat.normal, false), roughness: 0.6, metalness: 0, side,
+        emissive: mat.emissive ? 0xffffff : 0x000000, emissiveMap: tex(mat.emissive, true), emissiveIntensity: mat.emissive ? 1.2 : 0,
+      }));
+    });
+    g.setIndex(idx);
+    let obj;
+    if (m.skinned) {
+      const bi = i32(m.boneIndices), bw = f32(m.boneWeights);
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(Uint16Array.from(bi), 4));
+      g.setAttribute('skinWeight', new THREE.BufferAttribute(bw, 4));
+      obj = new THREE.SkinnedMesh(g, mats);
+      bones[m.bone].add(obj);
+      obj.bind(skeleton, bones[m.bone].matrixWorld.clone());
+    } else {
+      obj = new THREE.Mesh(g, mats);
+      bones[m.bone].add(obj);
+    }
+    obj.frustumCulled = false;
+  }
+  // BO2 idle pose per variant (e.g. the upgraded knives), applied after binding like the Unity builder does.
+  data.bones.forEach((b, i) => {
+    if (b.restPos && b.restPos.length === 3) bones[i].position.copy(mirrorPos(b.restPos));
+    if (b.restRot && b.restRot.length === 4) bones[i].quaternion.copy(mirrorRot(b.restRot));
+  });
+  for (const p of data.points) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.012), new THREE.MeshBasicMaterial({ color: 0x40ff80 }));
+    s.position.copy(mirrorPos(p.pos)); root.add(s);
+  }
+  current = new THREE.Group(); current.add(root); scene.add(current);
+  window.dbg = { THREE, scene, bones, camera, controls, current, data };
+  const view = location.hash.includes('close') ? [0.55, 0.15, 0.2, 0.25] : [3.2, 0.6, 0.0, -0.05];
+  controls.target.set(0, 0, view[3]);
+  camera.position.set(-view[0], view[1], view[2] + view[3]);
+  controls.update();
+  document.getElementById('info').textContent =
+    `${data.name}: ${data.meshes.map(m => m.name + ' ' + m.vertexCount).join(', ')}\n` +
+    `Green dots: ${data.points.map(p => p.name).join(', ')}. Sound cues at frames ${data.notes.map(n => n.frame).join(', ')}.`;
+  setFrame(+document.getElementById('frame').value);
+}
+
+const tracks = () => data.tracks.map(t => ({ bone: t.bone, pos: t.posOffset ? f32(t.posOffset) : null, rot: t.rot ? f32(t.rot) : null }));
+let cached = null;
+function setFrame(f) {
+  if (!data) return;
+  cached = cached && cached.data === data ? cached : { data, t: tracks() };
+  const f0 = Math.floor(f), f1 = Math.min(f0 + 1, data.frames), a = f - f0;
+  for (const t of cached.t) {
+    const b = bones[t.bone], base = bind[t.bone];
+    if (t.pos) {
+      const p0 = t.pos.subarray(f0 * 3, f0 * 3 + 3), p1 = t.pos.subarray(f1 * 3, f1 * 3 + 3);
+      b.position.copy(base.pos).add(new THREE.Vector3(-(p0[0] + (p1[0] - p0[0]) * a), p0[1] + (p1[1] - p0[1]) * a, p0[2] + (p1[2] - p0[2]) * a));
+    }
+    if (t.rot) {
+      const q0 = mirrorRot(t.rot.subarray(f0 * 4, f0 * 4 + 4)), q1 = mirrorRot(t.rot.subarray(f1 * 4, f1 * 4 + 4));
+      b.quaternion.copy(q0).slerp(q1, a);
+    }
+  }
+  document.getElementById('flabel').textContent = 'f' + f.toFixed(1);
+}
+
+const slider = document.getElementById('frame');
+slider.oninput = () => setFrame(+slider.value);
+document.getElementById('variant').onchange = e => load(e.target.value);
+document.getElementById('single').onchange = () => load(document.getElementById('variant').value);
+let playing = false, t0 = 0;
+document.getElementById('play').onclick = () => { playing = true; t0 = performance.now(); };
+renderer.setAnimationLoop(() => {
+  if (playing) {
+    const f = (performance.now() - t0) / 1000 * (data ? data.fps : 30);
+    if (f >= data.frames) { playing = false; }
+    slider.value = Math.min(f, data.frames); setFrame(+slider.value);
+  }
+  renderer.render(scene, camera);
+});
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+load(location.hash.slice(1) || 'Staff_Fire');
+</script>
+</body>
+</html>

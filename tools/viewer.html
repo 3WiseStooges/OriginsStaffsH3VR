@@ -141,6 +141,21 @@ const views = {
     g.add(v);
     return [g, 'First-person model (13k verts, higher detail than the world model) with the fire tip + crystal.\nHas extra tags: tag_upg_1..5 for the upgraded staff\'s orbiting crystals, tag_rotate, tag_trigger.'];
   },
+  async bo2view() {
+    // First-person assembly exactly as staff_fire_zm's weapon file attaches it.
+    const g = new THREE.Group();
+    const v = await load('t6_wpn_zmb_staff_view');
+    attach(v, 'tag_tip', await load('t6_wpn_zmb_staff_tip_fire_view'));
+    attach(v, 'tag_crystal', await load('t6_wpn_zmb_staff_crystal_fire_view'));
+    const reload = await load('t6_wpn_zmb_staff_reload_fire_view');
+    reload.position.x = 8.409; // attachViewModelOffsetX6, relative to the model root
+    v.add(reload);
+    g.add(v);
+    const w = await buildStaff(ELEMENTS[0], false);
+    w.position.y = -18;
+    g.add(w);
+    return [g, 'Top: BO2 first-person staff with tip, crystal and the reload assembly at X 8.409 (as the weapon file attaches them). Bottom: world model for comparison.'];
+  },
   async holder() {
     const g = new THREE.Group();
     g.add(await load('p6_zm_tm_staff_holder'));

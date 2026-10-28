@@ -14,7 +14,6 @@ namespace OriginsStaffs.EditorTools
     public static class StaffPrefabBuilder
     {
         private const string ManifestPath = RippedAssetPostprocessor.RippedRoot + "staff_assets.json";
-        private const string MaterialDir = RippedAssetPostprocessor.RippedRoot + "Materials/";
         private const string PrefabDir = "Assets/OriginsStaffs/Prefabs/Visual/";
 
         // tools/export_unity.py file stems per element (tips say "lightning", the rest "bolt").
@@ -49,7 +48,6 @@ namespace OriginsStaffs.EditorTools
 #pragma warning restore 0649
 
         private static Dictionary<string, ModelEntry> _models;
-        private static Dictionary<string, Material> _materials;
 
         [MenuItem("Origins Staffs/Rebuild Ripped Prefabs")]
         public static void Rebuild()
@@ -63,8 +61,7 @@ namespace OriginsStaffs.EditorTools
 
             _models = new Dictionary<string, ModelEntry>();
             foreach (var m in JsonUtility.FromJson<Manifest>(json.text).models) _models[m.name] = m;
-            _materials = new Dictionary<string, Material>();
-            Directory.CreateDirectory(MaterialDir);
+            RippedMaterials.ClearCache();
             Directory.CreateDirectory(PrefabDir);
             AssetDatabase.Refresh();
 
@@ -199,39 +196,7 @@ namespace OriginsStaffs.EditorTools
 
         private static Material GetMaterial(MaterialEntry m)
         {
-            Material mat;
-            if (_materials.TryGetValue(m.name, out mat)) return mat;
-
-            string path = MaterialDir + m.name + ".mat";
-            mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (mat == null)
-            {
-                mat = new Material(Shader.Find("Standard"));
-                AssetDatabase.CreateAsset(mat, path);
-            }
-
-            mat.SetFloat("_Glossiness", 0.35f);
-            mat.SetTexture("_MainTex", LoadTexture(m.albedo));
-            var normal = LoadTexture(m.normal);
-            mat.SetTexture("_BumpMap", normal);
-            if (normal != null) mat.EnableKeyword("_NORMALMAP");
-            var emissive = LoadTexture(m.emissive);
-            if (emissive != null)
-            {
-                mat.SetTexture("_EmissionMap", emissive);
-                mat.SetColor("_EmissionColor", Color.white * 1.5f);
-                mat.EnableKeyword("_EMISSION");
-                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-            }
-            EditorUtility.SetDirty(mat);
-            _materials[m.name] = mat;
-            return mat;
-        }
-
-        private static Texture2D LoadTexture(string file)
-        {
-            if (string.IsNullOrEmpty(file)) return null;
-            return AssetDatabase.LoadAssetAtPath<Texture2D>(RippedAssetPostprocessor.RippedRoot + "Textures/" + file);
+            return RippedMaterials.Get(m.name, m.albedo, m.normal, m.emissive);
         }
 
         private static int SavePrefab(string name, GameObject go)

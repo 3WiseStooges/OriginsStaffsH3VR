@@ -107,3 +107,7 @@ ImportedBundles/
 # Cache
 /meatkit.json
 MeatKitUpdate.unitypackage
+
+# Origins Staffs: folders the build menu generates (see the repo-root .gitignore)
+/[Aa]ssets/OriginsStaffs/Prefabs.meta
+/[Aa]ssets/OriginsStaffs/Data.meta
