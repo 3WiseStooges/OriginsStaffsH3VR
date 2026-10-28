@@ -8,7 +8,7 @@ H3VR, each in its base and upgraded form. Find them in the item spawner under
 
 | Staff | Upgraded | Shot | Charges (base / upgraded) |
 | --- | --- | --- | --- |
-| Staff of Fire | Kagutsuchi's Blood | A fireball, then two more fanning out to either side, that burn and set sosigs alight. | 9 / 12 |
+| Staff of Fire | Kagutsuchi's Blood | Three fireballs in a fan that burn and set sosigs alight. | 9 / 12 |
 | Staff of Ice | Ullr's Arrow | A spray of icicles. Up to three sosigs in front of you freeze, then shatter; upgraded, twelve icicles freeze up to five. | 6 / 9 |
 | Staff of Lightning | Kimat's Bite | Rapid, slow lightning balls that burst and shock everything nearby. | 12 / 18 |
 | Staff of Wind | Boreas' Fury | A fast ball of wind that blows away every sosig within 2 m of it. Upgraded, it also sweeps a wide cone in front. | 3 / 6 |

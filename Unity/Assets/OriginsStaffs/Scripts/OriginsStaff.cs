@@ -1,4 +1,3 @@
-using System.Collections;
 using FistVR;
 using UnityEngine;
 
@@ -43,17 +42,10 @@ namespace OriginsStaffs
         [Tooltip("Metres per second (BO2 projectileSpeed, e.g. fire 1200 in/s).")]
         public float ProjectileSpeed = 30.48f;
         public float SpreadDegrees = 0.5f;
-        [Tooltip("Fire: BO2's fire_spread_shots, extra fireballs after each shot (2, base and upgraded). They cost no charge.")]
-        public int SideShots = 0;
-        [Tooltip("Seconds before each side shot (BO2: two network frames, 0.2 s).")]
-        public float SideShotDelay = 0.2f;
-        [Tooltip("Degrees off the aim, turning about the world's up axis: first one way, then the other (BO2: 15).")]
-        public float SideShotYaw = 15f;
-        [Tooltip("Side shots start this far ahead of the muzzle (BO2: 50 in).")]
-        public float SideShotStart = 1.27f;
-        [Tooltip("Side shots head for a point this far out, turned by SideShotYaw (BO2: 100 in). With a wall closer than this along the aim, there are none.")]
-        public float SideShotReach = 2.54f;
-        public LayerMask SideShotBlockers;
+        [Tooltip("Projectiles per trigger pull, all at once from the muzzle, fanned side to side (fire: 3, base and upgraded). One charge per pull.")]
+        public int ProjectilesPerShot = 1;
+        [Tooltip("Degrees between neighbouring projectiles in the fan.")]
+        public float FanDegrees = 15f;
         public GameObject MuzzleFlashPrefab;
 
         [Header("Charge shot (upgraded staffs)")]
@@ -128,7 +120,7 @@ namespace OriginsStaffs
             m_block = new MaterialPropertyBlock();
             UpdateGlow();
             Debug.Log("[OriginsStaffs] " + name + " ready: " + Capacity + " charges, " + Element
-                      + (ConeShotPrefab != null ? " cone shot" : " shot" + (SideShots > 0 ? " + " + SideShots + " side shots" : "")) + " per pull"
+                      + (ConeShotPrefab != null ? " cone shot" : " x" + ProjectilesPerShot) + " per pull"
                       + (ChargeShot ? ", charges up to level " + (1 + ChargedShots.Length) : ""));
         }
 
@@ -323,9 +315,13 @@ namespace OriginsStaffs
             if (ProjectilePrefab != null)
             {
                 int iff = GM.CurrentPlayerBody.GetPlayerIFF();
-                Vector2 spread = Random.insideUnitCircle * SpreadDegrees;
-                LaunchProjectile(muzzle.position, muzzle.rotation * Quaternion.Euler(spread.x, spread.y, 0f) * Vector3.forward, iff);
-                if (SideShots > 0) StartCoroutine(FireSideShots(iff));
+                int count = Mathf.Max(1, ProjectilesPerShot);
+                for (int i = 0; i < count; i++)
+                {
+                    float yaw = (i - (count - 1) * 0.5f) * FanDegrees;
+                    Vector2 spread = Random.insideUnitCircle * SpreadDegrees;
+                    LaunchProjectile(muzzle.position, muzzle.rotation * Quaternion.Euler(spread.x, yaw + spread.y, 0f) * Vector3.forward, iff);
+                }
             }
             if (ConeShotPrefab != null)
             {
@@ -340,30 +336,6 @@ namespace OriginsStaffs
             Quaternion aim = Quaternion.LookRotation(dir);
             GameObject go = (GameObject)Instantiate(ProjectilePrefab.gameObject, from, aim);
             go.GetComponent<StaffProjectile>().Launch(aim * Vector3.forward * ProjectileSpeed, iff, RootRigidbody);
-        }
-
-        /// <summary>
-        /// BO2's fire_spread_shots, for the base staff and Kagutsuchi's Blood alike: 0.2 s after the
-        /// shot, unless a wall is within 100 in along the aim, a fireball goes off to one side, and 0.2 s
-        /// later another to the other side. Each starts 50 in ahead of the muzzle and heads for the
-        /// point 100 in out at 15 degrees off the aim at that moment, which sends it about 29 degrees
-        /// off the aim. Only while the staff is still held.
-        /// </summary>
-        private IEnumerator FireSideShots(int iff)
-        {
-            for (int i = 0; i < SideShots; i++)
-            {
-                yield return new WaitForSeconds(SideShotDelay);
-                if (!IsHeld || QuickbeltSlot != null || ProjectilePrefab == null) yield break;
-                Transform muzzle = GetMuzzle();
-                Vector3 origin = muzzle.position;
-                Vector3 forward = muzzle.forward;
-                if (i == 0 && Physics.Raycast(origin, forward, SideShotReach, SideShotBlockers, QueryTriggerInteraction.Ignore)) yield break;
-                // BO2 turns the yaw by -15 first, which in its axes is to the right, then +15.
-                Vector3 side = Quaternion.AngleAxis(i % 2 == 0 ? SideShotYaw : -SideShotYaw, Vector3.up) * forward;
-                Vector3 start = origin + forward * SideShotStart;
-                LaunchProjectile(start, origin + side * SideShotReach - start, iff);
-            }
         }
 
         /// <summary>

@@ -1,14 +1,19 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.1
+
+- The fire staffs' three fireballs leave together from the tip again; the side two were coming
+  out too far ahead of the staff.
+- The mod's icon is now the Origins Staffs folder thumbnail.
+
+## 0.1.0
 
 - Playable Staff of Fire and Kagutsuchi's Blood, built from BO2's own first-person
   models, sounds and reload animation.
 - Two-handed hold: black handle (grip only) and blue rings (trigger, release, reload lever).
 - Pump-action crystal reload behind a release button.
-- Both fire staffs throw a fireball per pull and, as in BO2, two more 0.2 s apart fanning out to
-  either side. Base staff: 9 charges. Upgraded: 12 charges, and outward knives that cut and stab
-  like H3VR's knives.
+- Both fire staffs throw three fireballs per pull, fanned 15 degrees apart, as in BO2. Base staff:
+  9 charges. Upgraded: 12 charges, and outward knives that cut and stab like H3VR's knives.
 - Spawner folder Firearms > Exotic > Origins Staffs with its own thumbnail.
 - The full set: Staff of Ice / Ullr's Arrow (6 / 9 charges), Staff of Lightning / Kimat's Bite
   (12 / 18) and Staff of Wind / Boreas' Fury (3 / 6), each with its own tip, crystal, reload,

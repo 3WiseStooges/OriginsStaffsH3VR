@@ -395,13 +395,10 @@ namespace OriginsStaffs.EditorTools
             staff.ProjectilePrefab = projectile;
             staff.ConeShotPrefab = cone;
             staff.ProjectileSpeed = data.stats.projectileSpeed * 0.0254f;
-            // BO2's fire_spread_shots: two staggered side fireballs, for the base staff and Kagutsuchi's Blood alike.
-            staff.SideShots = style.Element == StaffElement.Fire ? 2 : 0;
-            staff.SideShotDelay = 0.2f;              // two network frames
-            staff.SideShotYaw = 15f;
-            staff.SideShotStart = 50f * 0.0254f;
-            staff.SideShotReach = 100f * 0.0254f;
-            staff.SideShotBlockers = BlockerMask;
+            // Both fire staffs throw three fireballs at once, 15 degrees apart. (BO2 staggers the side two
+            // and starts them ahead of the muzzle; play-tested, that sent them too far out.)
+            staff.ProjectilesPerShot = style.Element == StaffElement.Fire ? 3 : 1;
+            staff.FanDegrees = 15f;
             staff.MuzzleFlashPrefab = flash;
             staff.GlowRenderers = glowRenderers.ToArray();
             staff.CrystalLight = crystalLight;
