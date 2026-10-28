@@ -173,6 +173,31 @@ namespace OriginsStaffs.EditorTools
             MeatKit.MeatKit.DoBuild();
         }
 
+        /// <summary>
+        /// Headless build of the Thunderstore package (tools/publish.ps1): builds the staffs, then has
+        /// MeatKit zip the package into Unity/AssetBundles/OriginsStaffs/&lt;version&gt;/ instead of
+        /// copying it into r2modman. The profile is put back to Copy To Profile afterwards.
+        /// </summary>
+        public static void BuildThunderstorePackage()
+        {
+            BuildAll();
+            var profile = AssetDatabase.LoadAssetAtPath<MeatKit.BuildProfile>(BuildDir + "OriginsStaffs_Profile.asset");
+            // MeatKit zips the whole export folder into itself: clear out an earlier build first.
+            if (Directory.Exists(profile.ExportPath)) Directory.Delete(profile.ExportPath, true);
+            MeatKit.MeatKitCache.LastSelectedProfile = profile;
+            profile.BuildAction = MeatKit.BuildAction.CreateThunderstorePackage;
+            try
+            {
+                MeatKit.MeatKit.DoBuild();
+            }
+            finally
+            {
+                profile.BuildAction = MeatKit.BuildAction.CopyToProfile;
+                EditorUtility.SetDirty(profile);
+                AssetDatabase.SaveAssets();
+            }
+        }
+
         // ------------------------------------------------------------------ staff
 
         private static BuiltStaff BuildStaff(string jsonPath)

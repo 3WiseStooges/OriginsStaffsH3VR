@@ -162,10 +162,22 @@ To move between versions, close Unity and copy the `Assets/MeatKit` folder from 
 
 ## Packaging
 
-MeatKit writes bundles to `Unity/AssetBundles/<PackageName>/<Version>/`. For testing, set the
-build profile to **Copy To Profile** with the r2modman H3VR profile. To publish, copy the
-bundles (and any `OriginsStaffs.dll`) into `package/`, then run `tcli build`. `thunderstore.toml`
-adds the repo-root README, CHANGELOG and icon.
+MeatKit writes bundles to `Unity/AssetBundles/<PackageName>/<Version>/`. **Build Staffs + Copy
+Mod To r2modman** installs them into the r2modman Default profile for testing.
+
+To publish, bump `version_number` in `manifest.json` and `versionNumber` in `thunderstore.toml`
+(Thunderstore rejects a version twice), close Unity and H3VR, then:
+
+```powershell
+$env:THUNDERSTORE_TOKEN = "<service account token>"
+./tools/publish.ps1
+```
+
+It refuses an unbumped or already-published version, builds headless
+(`StaffAssemblyBuilder.BuildThunderstorePackage`: MeatKit zips the package into the folder above
+instead of copying it to r2modman), checks the zip, and uploads it with `tcli publish`.
+`./tools/publish.ps1 -BuildOnly` builds and checks the zip without publishing. Publishing has to
+run on a machine with the BO2 rips, so it is a local step rather than a GitHub Action.
 
 The build profile's README/CHANGELOG/icon fields point at `Assets/OriginsStaffs/Package/`.
 `PackageDocsSync` copies the repo-root files there whenever the editor loads.
