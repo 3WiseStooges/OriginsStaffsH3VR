@@ -10,7 +10,7 @@ namespace = "LJIndustries"
 name = "OriginsStaffs"
 versionNumber = "0.1.0"
 description = "The four elemental staffs from Black Ops 2 Zombies' Origins, reloaded by hand with glowing crystals."
-websiteUrl = "https://github.com/3WiseStooges/OriginsStaffs"
+websiteUrl = "https://github.com/3WiseStooges/OriginsStaffsH3VR"
 containsNsfwContent = false
 
 [package.dependencies]

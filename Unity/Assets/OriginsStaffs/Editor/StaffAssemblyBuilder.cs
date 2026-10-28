@@ -1832,7 +1832,7 @@ namespace OriginsStaffs.EditorTools
             profile.Author = "LJIndustries";
             profile.Version = ManifestVersion();
             profile.Description = "The four elemental staffs from Black Ops 2 Zombies' Origins, reloaded by hand with glowing crystals.";
-            profile.WebsiteURL = "https://github.com/3WiseStooges/OriginsStaffs";
+            profile.WebsiteURL = "https://github.com/3WiseStooges/OriginsStaffsH3VR";
             profile.Icon = AssetDatabase.LoadAssetAtPath<Texture2D>(PackageDir + "icon.png");
             profile.ReadMe = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(PackageDir + "README.md");
             profile.Changelog = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(PackageDir + "CHANGELOG.md");
