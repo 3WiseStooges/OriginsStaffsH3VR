@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- The trigger hand holds the staff 2 in higher: the pointer finger now rests at the top of the
+  blue rings instead of their base.
+
 ## 0.1.1
 
 - The fire staffs' three fireballs leave together from the tip again; the side two were coming

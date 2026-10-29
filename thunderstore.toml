@@ -8,7 +8,7 @@ repository = "https://thunderstore.io"
 # Must match your Thunderstore team name exactly
 namespace = "LJIndustries"
 name = "OriginsStaffs"
-versionNumber = "0.1.1"
+versionNumber = "0.1.2"
 description = "The four elemental staffs from Black Ops 2 Zombies' Origins, reloaded by hand with glowing crystals."
 websiteUrl = "https://github.com/3WiseStooges/OriginsStaffsH3VR"
 containsNsfwContent = false

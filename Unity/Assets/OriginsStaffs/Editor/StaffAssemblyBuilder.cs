@@ -286,7 +286,9 @@ namespace OriginsStaffs.EditorTools
             leverGo.layer = LayerInteractable;
             leverGo.transform.SetParent(root.transform, false);
             Transform recoilHolder = Child(leverGo.transform, "RecoilHolder", Vector3.zero);
-            Transform pose = Child(recoilHolder, "Pose", Vector3.zero);
+            // Play-tested: the hand sat with the pointer finger at the base of the blue rings; 2 in higher
+            // puts it at their top.
+            Transform pose = Child(recoilHolder, "Pose", new Vector3(0f, 0f, 2f * 0.0254f));
 
             // Holstered upright along the body, locked at the rings: the staff's +Z (tip) maps to
             // the slot's up.
